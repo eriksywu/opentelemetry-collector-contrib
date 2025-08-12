@@ -9,6 +9,7 @@ import (
 	"regexp"
 	"time"
 
+	"github.com/open-telemetry/opentelemetry-collector-contrib/internal/filter/filterset"
 	"go.opentelemetry.io/collector/component"
 	"go.opentelemetry.io/collector/pdata/pcommon"
 	"go.opentelemetry.io/collector/pdata/pmetric"
@@ -38,6 +39,7 @@ func init() {
 type Adjuster struct {
 	startTimeMetricRegex *regexp.Regexp
 	set                  component.TelemetrySettings
+	filter               filterset.FilterSet
 }
 
 // NewAdjuster returns a new Adjuster which adjust metrics' start times based on the initial received points.
@@ -63,6 +65,10 @@ func (a *Adjuster) AdjustMetrics(_ context.Context, metrics pmetric.Metrics) (pm
 			ilm := rm.ScopeMetrics().At(j)
 			for k := 0; k < ilm.Metrics().Len(); k++ {
 				metric := ilm.Metrics().At(k)
+				metricName := metric.Name()
+				if !a.filter.Matches(metricName) {
+					continue
+				}
 				switch metric.Type() {
 				case pmetric.MetricTypeGauge:
 					continue

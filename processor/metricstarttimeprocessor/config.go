@@ -9,6 +9,7 @@ import (
 	"regexp"
 	"time"
 
+	"github.com/open-telemetry/opentelemetry-collector-contrib/processor/metricstarttimeprocessor/internal/filter"
 	"go.opentelemetry.io/collector/component"
 
 	"github.com/open-telemetry/opentelemetry-collector-contrib/processor/metricstarttimeprocessor/internal/starttimemetric"
@@ -18,10 +19,13 @@ import (
 
 // Config holds configuration of the metric start time processor.
 type Config struct {
-	Strategy   string        `mapstructure:"strategy"`
-	GCInterval time.Duration `mapstructure:"gc_interval"`
+	Strategy          string        `mapstructure:"strategy"`
+	GCInterval        time.Duration `mapstructure:"gc_interval"`
+	InitialPointDelay time.Duration `mapstructure:"initial_point_delay"`
 	// StartTimeMetricRegex only applies then the start_time_metric strategy is used
-	StartTimeMetricRegex string `mapstructure:"start_time_metric_regex"`
+	StartTimeMetricRegex string              `mapstructure:"start_time_metric_regex"`
+	Include              filter.FilterConfig `mapstructure:"include"`
+	Exclude              filter.FilterConfig `mapstructure:"exclude"`
 }
 
 var _ component.Config = (*Config)(nil)
@@ -44,6 +48,9 @@ func (cfg *Config) Validate() error {
 	}
 	if cfg.GCInterval <= 0 {
 		return errors.New("gc_interval must be positive")
+	}
+	if cfg.InitialPointDelay <= 0 {
+		return errors.New("initial_point_delay must be positive")
 	}
 	if cfg.StartTimeMetricRegex != "" {
 		if _, err := regexp.Compile(cfg.StartTimeMetricRegex); err != nil {
