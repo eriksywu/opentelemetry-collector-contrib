@@ -9,6 +9,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/open-telemetry/opentelemetry-collector-contrib/processor/metricstarttimeprocessor/internal/filter"
 	"github.com/stretchr/testify/assert"
 	"go.opentelemetry.io/collector/component/componenttest"
 	"go.opentelemetry.io/collector/pdata/pcommon"
@@ -121,8 +122,7 @@ func TestStartTimeMetricMatch(t *testing.T) {
 			// To test that the adjuster is using the fallback correctly, override the fallback time to use
 			// directly.
 			approximateCollectorStartTime = collectorStartTime.AsTime()
-
-			stma := NewAdjuster(componenttest.NewNopTelemetrySettings(), tt.startTimeMetricRegex)
+			stma := NewAdjuster(componenttest.NewNopTelemetrySettings(), tt.startTimeMetricRegex, filter.NoOpFilter{})
 
 			// We need to make sure the job and instance labels are set before the adjuster is used.
 			pmetrics := tt.inputs
@@ -216,7 +216,7 @@ func TestStartTimeMetricFallback(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			stma := NewAdjuster(componenttest.NewNopTelemetrySettings(), tt.startTimeMetricRegex)
+			stma := NewAdjuster(componenttest.NewNopTelemetrySettings(), tt.startTimeMetricRegex, filter.NoOpFilter{})
 
 			// To test that the adjuster is using the fallback correctly, override the fallback time to use
 			// directly.
