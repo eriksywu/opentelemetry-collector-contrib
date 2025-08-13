@@ -5,15 +5,14 @@ package subtractinitial // import "github.com/open-telemetry/opentelemetry-colle
 
 import (
 	"context"
-	"sync/atomic"
 	"time"
 
-	"github.com/open-telemetry/opentelemetry-collector-contrib/internal/filter/filterset"
-	"github.com/open-telemetry/opentelemetry-collector-contrib/pkg/pdatautil"
-	"github.com/open-telemetry/opentelemetry-collector-contrib/processor/metricstarttimeprocessor/internal/datapointstorage"
 	"go.opentelemetry.io/collector/component"
 	"go.opentelemetry.io/collector/pdata/pcommon"
 	"go.opentelemetry.io/collector/pdata/pmetric"
+
+	"github.com/open-telemetry/opentelemetry-collector-contrib/pkg/pdatautil"
+	"github.com/open-telemetry/opentelemetry-collector-contrib/processor/metricstarttimeprocessor/internal/datapointstorage"
 )
 
 // Type is the value users can use to configure the subtract initial point adjuster.
@@ -28,26 +27,13 @@ const Type = "subtract_initial_point"
 type Adjuster struct {
 	referenceCache *datapointstorage.Cache
 	set            component.TelemetrySettings
-
-	filter filterset.FilterSet
-
-	skipDueToDelay *atomic.Bool
 }
 
 // NewAdjuster returns a new Adjuster which adjust metrics' start times based on the initial received points.
-func NewAdjuster(set component.TelemetrySettings, gcInterval, initialPointDelay time.Duration, filter filterset.FilterSet) *Adjuster {
-	skipDueToDelay := &atomic.Bool{}
-	if initialPointDelay > 0 {
-		skipDueToDelay.Store(true)
-		time.AfterFunc(initialPointDelay, func() {
-			skipDueToDelay.Store(false)
-		})
-	}
+func NewAdjuster(set component.TelemetrySettings, gcInterval time.Duration) *Adjuster {
 	return &Adjuster{
 		referenceCache: datapointstorage.NewCache(gcInterval),
 		set:            set,
-		filter:         filter,
-		skipDueToDelay: skipDueToDelay,
 	}
 }
 
@@ -65,9 +51,6 @@ func NewAdjuster(set component.TelemetrySettings, gcInterval, initialPointDelay 
 // updated. The function returns a new pmetric.Metrics containing the adjusted
 // metrics.
 func (a *Adjuster) AdjustMetrics(_ context.Context, metrics pmetric.Metrics) (pmetric.Metrics, error) {
-	if a.skipDueToDelay.Load() {
-		return metrics, nil
-	}
 	for i := 0; i < metrics.ResourceMetrics().Len(); i++ {
 		rm := metrics.ResourceMetrics().At(i)
 		attrHash := pdatautil.MapHash(rm.Resource().Attributes())
@@ -80,10 +63,6 @@ func (a *Adjuster) AdjustMetrics(_ context.Context, metrics pmetric.Metrics) (pm
 			ilm := rm.ScopeMetrics().At(j)
 			for k := range ilm.Metrics().Len() {
 				metric := ilm.Metrics().At(k)
-				metricName := metric.Name()
-				if !a.filter.Matches(metricName) {
-					continue
-				}
 				switch dataType := metric.Type(); dataType {
 				case pmetric.MetricTypeHistogram:
 					adjustMetricHistogram(previousValueTsm, metric)

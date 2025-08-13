@@ -44,10 +44,10 @@ func createMetricsProcessor(
 
 	switch rCfg.Strategy {
 	case truereset.Type:
-		adjuster := truereset.NewAdjuster(set.TelemetrySettings, rCfg.GCInterval, filter)
+		adjuster := truereset.NewAdjuster(set.TelemetrySettings, rCfg.GCInterval)
 		adjustMetrics = adjuster.AdjustMetrics
 	case subtractinitial.Type:
-		adjuster := subtractinitial.NewAdjuster(set.TelemetrySettings, rCfg.GCInterval, rCfg.InitialPointDelay, filter)
+		adjuster := subtractinitial.NewAdjuster(set.TelemetrySettings, rCfg.GCInterval)
 		adjustMetrics = adjuster.AdjustMetrics
 	case starttimemetric.Type:
 		var startTimeMetricRegex *regexp.Regexp
@@ -58,7 +58,7 @@ func createMetricsProcessor(
 				return nil, err
 			}
 		}
-		adjuster := starttimemetric.NewAdjuster(set.TelemetrySettings, startTimeMetricRegex, filter)
+		adjuster := starttimemetric.NewAdjuster(set.TelemetrySettings, startTimeMetricRegex)
 		adjustMetrics = adjuster.AdjustMetrics
 	case starttimeattribute.Type:
 		adjuster, err := starttimeattribute.NewAdjuster(set.TelemetrySettings, filter, rCfg.AttributesFilters)

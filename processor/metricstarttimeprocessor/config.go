@@ -20,14 +20,14 @@ import (
 
 // Config holds configuration of the metric start time processor.
 type Config struct {
-	Strategy          string        `mapstructure:"strategy"`
-	GCInterval        time.Duration `mapstructure:"gc_interval"`
-	InitialPointDelay time.Duration `mapstructure:"initial_point_delay"`
+	Strategy   string        `mapstructure:"strategy"`
+	GCInterval time.Duration `mapstructure:"gc_interval"`
 	// StartTimeMetricRegex only applies then the start_time_metric strategy is used
-	StartTimeMetricRegex string                                    `mapstructure:"start_time_metric_regex"`
-	IncludeMetrics       filter.FilterConfig                       `mapstructure:"include_metrics"`
-	ExcludeMetrics       filter.FilterConfig                       `mapstructure:"exclude_metrics"`
-	AttributesFilters    starttimeattribute.AttributesFilterConfig `mapstructure:"attributes_filters"`
+	StartTimeMetricRegex string              `mapstructure:"start_time_metric_regex"`
+	IncludeMetrics       filter.FilterConfig `mapstructure:"include_metrics"`
+	ExcludeMetrics       filter.FilterConfig `mapstructure:"exclude_metrics"`
+	// AttributesFilters only applies to the start_time_attribute strategy to construct specific k8s api informer filters
+	AttributesFilters starttimeattribute.AttributesFilterConfig `mapstructure:"attributes_filters"`
 }
 
 var _ component.Config = (*Config)(nil)
@@ -51,9 +51,6 @@ func (cfg *Config) Validate() error {
 	}
 	if cfg.GCInterval <= 0 {
 		return errors.New("gc_interval must be positive")
-	}
-	if cfg.InitialPointDelay < 0 {
-		return errors.New("initial_point_delay must be non-negative")
 	}
 	if cfg.StartTimeMetricRegex != "" {
 		if _, err := regexp.Compile(cfg.StartTimeMetricRegex); err != nil {
