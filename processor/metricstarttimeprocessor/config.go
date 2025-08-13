@@ -9,6 +9,8 @@ import (
 	"regexp"
 	"time"
 
+	"github.com/open-telemetry/opentelemetry-collector-contrib/processor/metricstarttimeprocessor/internal/filter"
+	"github.com/open-telemetry/opentelemetry-collector-contrib/processor/metricstarttimeprocessor/internal/starttimeattribute"
 	"go.opentelemetry.io/collector/component"
 
 	"github.com/open-telemetry/opentelemetry-collector-contrib/processor/metricstarttimeprocessor/internal/starttimemetric"
@@ -21,7 +23,11 @@ type Config struct {
 	Strategy   string        `mapstructure:"strategy"`
 	GCInterval time.Duration `mapstructure:"gc_interval"`
 	// StartTimeMetricRegex only applies then the start_time_metric strategy is used
-	StartTimeMetricRegex string `mapstructure:"start_time_metric_regex"`
+	StartTimeMetricRegex string              `mapstructure:"start_time_metric_regex"`
+	IncludeMetrics       filter.FilterConfig `mapstructure:"include_metrics"`
+	ExcludeMetrics       filter.FilterConfig `mapstructure:"exclude_metrics"`
+	// AttributesFilters only applies to the start_time_attribute strategy to construct specific k8s api informer filters
+	AttributesFilters starttimeattribute.AttributesFilterConfig `mapstructure:"attributes_filters"`
 }
 
 var _ component.Config = (*Config)(nil)
@@ -39,6 +45,7 @@ func (cfg *Config) Validate() error {
 	case truereset.Type:
 	case subtractinitial.Type:
 	case starttimemetric.Type:
+	case starttimeattribute.Type:
 	default:
 		return fmt.Errorf("%q is not a valid strategy", cfg.Strategy)
 	}
