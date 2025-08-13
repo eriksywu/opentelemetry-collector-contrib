@@ -85,6 +85,9 @@ func (a *Adjuster) AdjustMetrics(ctx context.Context, metrics pmetric.Metrics) (
 						zap.String("metricName", metricName))
 					continue
 				}
+				if a.hasStartTimeSet(metric) {
+					continue
+				}
 				// Get pod start time
 				startTime := a.podClient.GetPodStartTime(ctx, *podID)
 				if startTime.IsZero() {
@@ -102,6 +105,28 @@ func (a *Adjuster) AdjustMetrics(ctx context.Context, metrics pmetric.Metrics) (
 	}
 
 	return metrics, nil
+}
+
+// only look at the first datapoint
+func (a *Adjuster) hasStartTimeSet(metric pmetric.Metric) bool {
+	switch metric.Type() {
+	case pmetric.MetricTypeSum:
+		dataPoints := metric.Sum().DataPoints()
+		if dataPoints.Len() > 0 {
+			return dataPoints.At(0).StartTimestamp() != 0
+		}
+	case pmetric.MetricTypeHistogram:
+		dataPoints := metric.Histogram().DataPoints()
+		if dataPoints.Len() > 0 {
+			return dataPoints.At(0).StartTimestamp() != 0
+		}
+	case pmetric.MetricTypeExponentialHistogram:
+		dataPoints := metric.ExponentialHistogram().DataPoints()
+		if dataPoints.Len() > 0 {
+			return dataPoints.At(0).StartTimestamp() != 0
+		}
+	}
+	return false
 }
 
 func (a *Adjuster) extractPodIdentifier(attrs pcommon.Map) *podIdentifier {

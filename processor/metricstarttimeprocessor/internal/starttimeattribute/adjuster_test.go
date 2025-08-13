@@ -42,11 +42,12 @@ func TestAdjustMetrics(t *testing.T) {
 	}
 
 	tests := []struct {
-		name           string
-		attrs          map[string]string
-		expectAdjusted bool
-		isCumulative   bool
-		filter         filterset.FilterSet
+		name             string
+		attrs            map[string]string
+		expectAdjusted   bool
+		isCumulative     bool
+		startTimeUnixSec int64
+		filter           filterset.FilterSet
 	}{
 		{
 			name: "cumulative metric with pod IP",
@@ -94,11 +95,20 @@ func TestAdjustMetrics(t *testing.T) {
 			isCumulative:   true,
 			filter:         filter.NoOpFilter{NoMatch: true},
 		},
+		{
+			name: "metric excluded because it has a non-zero start time",
+			attrs: map[string]string{
+				"k8s.pod.ip": "10.0.0.1",
+			},
+			expectAdjusted:   false,
+			isCumulative:     true,
+			startTimeUnixSec: time.Now().Unix(),
+		},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			metrics := createTestMetrics(testMetricName, tt.attrs, tt.isCumulative)
+			metrics := createTestMetrics(testMetricName, tt.attrs, tt.isCumulative, tt.startTimeUnixSec)
 			originalStartTime := metrics.ResourceMetrics().At(0).ScopeMetrics().At(0).Metrics().At(0).Sum().DataPoints().At(0).StartTimestamp()
 			metricNameFilter := tt.filter
 			if metricNameFilter == nil {
@@ -125,7 +135,7 @@ func TestAdjustMetrics(t *testing.T) {
 	}
 }
 
-func createTestMetrics(name string, attrs map[string]string, cumulative bool) pmetric.Metrics {
+func createTestMetrics(name string, attrs map[string]string, cumulative bool, startTime int64) pmetric.Metrics {
 	metrics := pmetric.NewMetrics()
 	rm := metrics.ResourceMetrics().AppendEmpty()
 
@@ -146,7 +156,7 @@ func createTestMetrics(name string, attrs map[string]string, cumulative bool) pm
 	}
 
 	dp := sum.DataPoints().AppendEmpty()
-	dp.SetStartTimestamp(pcommon.NewTimestampFromTime(time.Now().Add(-30 * time.Minute)))
+	dp.SetStartTimestamp(pcommon.NewTimestampFromTime(time.Unix(startTime, 0)))
 	dp.SetTimestamp(pcommon.NewTimestampFromTime(time.Now()))
 	dp.SetDoubleValue(100.0)
 
